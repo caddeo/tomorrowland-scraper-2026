@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -26,16 +27,25 @@ type LineUpBlock struct {
 	UUID  string `json:"uuid"`
 }
 
-type Performance struct {
-	Name      string `json:"name"`
-	Stage     Stage  `json:"stage"`
-	Day       string `json:"day"`
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
+type Artist struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type Stage struct {
+	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+type Performance struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Artists   []Artist `json:"artists"`
+	Stage     Stage    `json:"stage"`
+	Date      string   `json:"date"`
+	Day       string   `json:"day"`
+	StartTime string   `json:"startTime"`
+	EndTime   string   `json:"endTime"`
 }
 
 type Lineup struct {
@@ -89,22 +99,12 @@ func run() (err error) {
 		return err
 	}
 
-	// Step 2: fetch the CDN JSON and print performances
 	c2 := colly.NewCollector()
-
+	var lineup Lineup
 	c2.OnResponse(func(r *colly.Response) {
-		var lineup Lineup
 		if err := json.Unmarshal(r.Body, &lineup); err != nil {
 			log.Fatal(err)
 			return
-		}
-
-		fmt.Printf("%-10s %-30s %-8s %-8s %s\n", "Day", "Stage", "Start", "End", "Artist")
-		fmt.Println(strings.Repeat("-", 80))
-		for _, p := range lineup.Performances {
-			start := p.StartTime[11:16]
-			end := p.EndTime[11:16]
-			fmt.Printf("%-10s %-30s %-8s %-8s %s\n", p.Day, p.Stage.Name, start, end, p.Name)
 		}
 	})
 
@@ -114,6 +114,39 @@ func run() (err error) {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("%-10s %-30s %-8s %-8s %s\n", "Day", "Stage", "Start", "End", "Artist")
+	fmt.Println(strings.Repeat("-", 80))
+	for _, p := range lineup.Performances {
+		start := p.StartTime[11:16]
+		end := p.EndTime[11:16]
+		fmt.Printf("%-10s %-30s %-8s %-8s %s\n", p.Day, p.Stage.Name, start, end, p.Name)
+	}
+
+	t := time.Now()
+	filename := fmt.Sprintf("tomorrowland-w1-%s-%s%02d.json",
+		t.Format("2006-01-02"),
+		t.Format("150405"),
+		t.Nanosecond()/10000000,
+	)
+
+	file, err := os.Create(fmt.Sprintf("archive/%s", filename))
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			return
+		}
+	}()
+
+	encoder := json.NewEncoder(file)
+	if err := encoder.Encode(lineup); err != nil {
+		return err
+	}
+
+	log.Printf("Saved to %s", filename)
 
 	return nil
 }
