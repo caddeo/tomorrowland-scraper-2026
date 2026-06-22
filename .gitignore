@@ -33,3 +33,4 @@ go.work.sum
 
 # project files
 credentials.json
+token.json
