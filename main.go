@@ -1,55 +1,49 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/csv"
 	"fmt"
 	"log"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/gocolly/colly/v2"
+	"tomorrowland-scraper/internal/diff"
+	"tomorrowland-scraper/internal/models"
+	"tomorrowland-scraper/internal/scraper"
+	"tomorrowland-scraper/internal/storage"
 )
 
-type NextData struct {
-	Props struct {
-		PageProps struct {
-			Doc struct {
-				Blocks []json.RawMessage `json:"blocks"`
-			} `json:"doc"`
-		} `json:"pageProps"`
-	} `json:"props"`
-}
+func exportToCSV(lineup models.Lineup, path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-type LineUpBlock struct {
-	Type  string `json:"type"`
-	Event string `json:"event"`
-	UUID  string `json:"uuid"`
-}
+	w := csv.NewWriter(file)
+	defer w.Flush()
 
-type Artist struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
+	if err := w.Write([]string{"Day", "Date", "Stage", "Start", "End", "Artist"}); err != nil {
+		return err
+	}
 
-type Stage struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
+	for _, p := range lineup.Performances {
 
-type Performance struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Artists   []Artist `json:"artists"`
-	Stage     Stage    `json:"stage"`
-	Date      string   `json:"date"`
-	Day       string   `json:"day"`
-	StartTime string   `json:"startTime"`
-	EndTime   string   `json:"endTime"`
-}
+		start := p.StartTime
+		end := p.EndTime
+		if len(start) >= 16 {
+			start = start[11:16]
+		}
+		if len(end) >= 16 {
+			end = end[11:16]
+		}
 
-type Lineup struct {
-	Performances []Performance `json:"performances"`
+		if err := w.Write([]string{p.Day, p.Date, p.Stage.Name, start, end, p.Name}); err != nil {
+			return err
+		}
+	}
+
+	return w.Error()
 }
 
 func main() {
@@ -64,53 +58,7 @@ func main() {
 }
 
 func run() (err error) {
-	// Step 1: fetch the lineup page and extract event + uuid from __NEXT_DATA__
-	c := colly.NewCollector()
-
-	var cdnURL string
-
-	c.OnHTML("script#__NEXT_DATA__", func(e *colly.HTMLElement) {
-		var nd NextData
-		if err := json.Unmarshal([]byte(e.Text), &nd); err != nil {
-			log.Fatal(err)
-			return
-		}
-
-		for _, raw := range nd.Props.PageProps.Doc.Blocks {
-			var block LineUpBlock
-			if err := json.Unmarshal(raw, &block); err != nil {
-				continue
-			}
-			if block.Type == "line-up" {
-				cdnURL = fmt.Sprintf("https://artist-lineup-cdn.tomorrowland.com/%s-W1-%s.json", block.Event, block.UUID)
-				fmt.Println("CDN URL:", cdnURL)
-			}
-		}
-	})
-
-	err = c.Visit("https://belgium.tomorrowland.com/en/line-up/")
-	c.Wait()
-
-	if err != nil {
-		return err
-	}
-
-	if cdnURL == "" {
-		return err
-	}
-
-	c2 := colly.NewCollector()
-	var lineup Lineup
-	c2.OnResponse(func(r *colly.Response) {
-		if err := json.Unmarshal(r.Body, &lineup); err != nil {
-			log.Fatal(err)
-			return
-		}
-	})
-
-	err = c2.Visit(cdnURL)
-	c2.Wait()
-
+	lineup, err := scraper.Scrape()
 	if err != nil {
 		return err
 	}
@@ -123,30 +71,33 @@ func run() (err error) {
 		fmt.Printf("%-10s %-30s %-8s %-8s %s\n", p.Day, p.Stage.Name, start, end, p.Name)
 	}
 
-	t := time.Now()
-	filename := fmt.Sprintf("tomorrowland-w1-%s-%s%02d.json",
-		t.Format("2006-01-02"),
-		t.Format("150405"),
-		t.Nanosecond()/10000000,
-	)
+	if err := storage.Archive(lineup); err != nil {
+		return err
+	}
 
-	file, err := os.Create(fmt.Sprintf("archive/%s", filename))
+	files, err := storage.List()
+	if err != nil || len(files) < 2 {
+		return err
+	}
+
+	if err := runDiff(files[1], files[0]); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runDiff(oldFile, newFile string) error {
+	old, err := storage.Load(oldFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("load %s: %w", oldFile, err)
+	}
+	new, err := storage.Load(newFile)
+	if err != nil {
+		return fmt.Errorf("load %s: %w", newFile, err)
 	}
 
-	defer func() {
-		if err := file.Close(); err != nil {
-			return
-		}
-	}()
-
-	encoder := json.NewEncoder(file)
-	if err := encoder.Encode(lineup); err != nil {
-		return err
-	}
-
-	log.Printf("Saved to %s", filename)
-
+	d := diff.Diff(old, new)
+	fmt.Print(d.Format(oldFile, newFile))
 	return nil
 }
