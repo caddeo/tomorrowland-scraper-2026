@@ -1,0 +1,57 @@
+{
+  "performances": [
+    {
+      "id": "0001",
+      "name": "Artist A",
+      "artists": [{"id": "a1", "name": "Artist A"}],
+      "stage": {"id": "s1", "name": "MAINSTAGE"},
+      "date": "2026-07-18",
+      "day": "SATURDAY",
+      "startTime": "2026-07-18 20:00:00+02:00",
+      "endTime": "2026-07-18 21:30:00+02:00"
+    },
+    {
+      "id": "0002",
+      "name": "Artist B",
+      "artists": [{"id": "b1", "name": "Artist B"}],
+      "stage": {"id": "s2", "name": "CRYSTAL GARDEN"},
+      "date": "2026-07-18",
+      "day": "SATURDAY",
+      "startTime": "2026-07-18 18:00:00+02:00",
+      "endTime": "2026-07-18 19:30:00+02:00"
+    },
+    {
+      "id": "0003",
+      "name": "Artist C",
+      "artists": [{"id": "c1", "name": "Artist C"}],
+      "stage": {"id": "s1", "name": "MAINSTAGE"},
+      "date": "2026-07-19",
+      "day": "SUNDAY",
+      "startTime": "2026-07-19 14:00:00+02:00",
+      "endTime": "2026-07-19 15:30:00+02:00"
+    },
+    {
+      "id": "0004",
+      "name": "Artist D b2b Artist E",
+      "artists": [
+        {"id": "d1", "name": "Artist D"},
+        {"id": "e1", "name": "Artist E"}
+      ],
+      "stage": {"id": "s2", "name": "CRYSTAL GARDEN"},
+      "date": "2026-07-19",
+      "day": "SUNDAY",
+      "startTime": "2026-07-19 22:00:00+02:00",
+      "endTime": "2026-07-19 23:30:00+02:00"
+    },
+    {
+      "id": "0005",
+      "name": "Artist F",
+      "artists": [{"id": "f1", "name": "Artist F"}],
+      "stage": {"id": "s1", "name": "MAINSTAGE"},
+      "date": "2026-07-17",
+      "day": "FRIDAY",
+      "startTime": "2026-07-17 16:00:00+02:00",
+      "endTime": "2026-07-17 17:30:00+02:00"
+    }
+  ]
+}
