@@ -29,6 +29,8 @@ func Archive(lineup models.Lineup) (err error) {
 		}
 	}()
 
+	lineup.Hash = lineup.ComputeHash()
+
 	encoder := json.NewEncoder(file)
 	if err := encoder.Encode(lineup); err != nil {
 		return err
