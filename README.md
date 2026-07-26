@@ -1,5 +1,7 @@
 # Tomorrowland Lineup Scraper
 
+Never really finished it, but the idea is there.
+
 Scrapes the [Tomorrowland Lineup 2026](https://belgium.tomorrowland.com/en/line-up) for the first week and sends it to a configured google sheet.
 
 Built using Golang:
